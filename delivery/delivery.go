@@ -14,6 +14,7 @@ import (
 type Service interface {
 	Deliver(msg *data.SMTPMessage) (id string, err error)
 	WillDeliver(from, to string, as auth.Identity) bool
+	Deliveries(chan *data.SMTPMessage)
 }
 
 // Load loads a delivery backend
