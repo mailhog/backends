@@ -60,7 +60,7 @@ func NewLocalResolver(cfg config.BackendConfig, appCfg config.AppConfig) *LocalR
 func (l *LocalResolver) Resolve(address string) (r Result) {
 	path := data.PathFromString(address)
 
-	log.Printf("resolving: %s", path)
+	log.Printf("resolving: %+v", path)
 
 	if m, ok := l.resolveMap[path.Domain]; ok {
 		log.Printf("found domain: %s", path.Domain)

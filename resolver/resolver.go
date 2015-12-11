@@ -41,7 +41,9 @@ const (
 	// - domains this host acts as a inter-network router for, including
 	//   private/public mail relaying
 	DomainSecondaryLocal
+)
 
+const (
 	// MailboxLookupSkipped is returned when no local mailbox lookup is performed
 	// e.g. for secondary local domains
 	MailboxLookupSkipped = MailboxState(iota)

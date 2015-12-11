@@ -118,19 +118,19 @@ func loadSMTPMessage(file string) (*data.SMTPMessage, error) {
 	for i, line := range l {
 		c = i
 		if strings.HasPrefix(line, "HELO:") {
-			ln := strings.TrimPrefix(line, "HELO:<")
+			ln := strings.TrimPrefix(strings.TrimSpace(line), "HELO:<")
 			ln = strings.TrimSuffix(ln, ">")
 			s.Helo = ln
 			continue
 		}
 		if strings.HasPrefix(line, "TO:<") {
-			ln := strings.TrimPrefix(line, "TO:<")
+			ln := strings.TrimPrefix(strings.TrimSpace(line), "TO:<")
 			ln = strings.TrimSuffix(ln, ">")
 			s.To = append(s.To, ln)
 			continue
 		}
 		if strings.HasPrefix(line, "FROM:<") {
-			ln := strings.TrimPrefix(line, "FROM:<")
+			ln := strings.TrimPrefix(strings.TrimSpace(line), "FROM:<")
 			ln = strings.TrimSuffix(ln, ">")
 			s.From = ln
 			continue
@@ -145,8 +145,17 @@ func loadSMTPMessage(file string) (*data.SMTPMessage, error) {
 	return s, nil
 }
 
+// Delivered implements DeliveryService.Delivered
+func (l *LocalDelivery) Delivered(m Message, ok bool) error {
+	if !ok {
+		return nil
+	}
+
+	return os.Remove(filepath.Join(l.spoolNew, m.ID))
+}
+
 // Deliveries implements DeliveryService.Deliveries
-func (l *LocalDelivery) Deliveries(c chan *data.SMTPMessage) {
+func (l *LocalDelivery) Deliveries(c chan *Message) {
 	go func() {
 		filepath.Walk(l.spoolNew, func(path string, info os.FileInfo, err error) error {
 			if info.IsDir() {
@@ -161,7 +170,8 @@ func (l *LocalDelivery) Deliveries(c chan *data.SMTPMessage) {
 				return nil
 			}
 
-			c <- msg
+			_, f := filepath.Split(path)
+			c <- &Message{f, *msg}
 			return nil
 		})
 
@@ -179,13 +189,14 @@ func (l *LocalDelivery) Deliveries(c chan *data.SMTPMessage) {
 				select {
 				case event := <-watcher.Events:
 					log.Println("event:", event)
-					if event.Op&fsnotify.Write == fsnotify.Write {
+					if event.Op&fsnotify.Create == fsnotify.Create {
 						log.Println("modified file:", event.Name)
 						msg, err := loadSMTPMessage(event.Name)
 						if err != nil {
 							log.Printf("error loading message: %s", err)
 						} else {
-							c <- msg
+							_, f := filepath.Split(event.Name)
+							c <- &Message{f, *msg}
 						}
 					}
 				case err := <-watcher.Errors:
